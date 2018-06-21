@@ -16,15 +16,23 @@ import (
 )
 
 var _ = Describe("Piper", func() {
+	var input1 string
+
 	BeforeEach(func() {
 		err := os.RemoveAll(dockerconfig.InvocationsPath)
 		Expect(err).NotTo(HaveOccurred())
+		input1, err = ioutil.TempDir("", "")
+		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("runs a concourse task", func() {
+	AfterEach(func() {
+		os.RemoveAll(input1)
+	})
+
+	FIt("runs a concourse task", func() {
 		command := exec.Command(pathToPiper,
 			"-c", "fixtures/task.yml",
-			"-i", "input-1=/tmp/local-1",
+			"-i", fmt.Sprintf("input-1=%s", input1),
 			"-o", "output-1=/tmp/local-2",
 		)
 		command.Env = append(os.Environ(), "VAR1=var-1")
@@ -38,10 +46,10 @@ var _ = Describe("Piper", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		dockerCommands := strings.Split(strings.TrimSpace(string(dockerInvocations)), "\n")
-		Expect(dockerCommands).To(Equal([]string{
+		Expect(dockerCommands).To(ConsistOf(
 			fmt.Sprintf("%s pull my-image", pathToDocker),
-			fmt.Sprintf("%s run --workdir=/tmp/build --env=VAR1=var-1 --volume=/tmp/local-1:/tmp/build/input-1 --volume=/tmp/local-2:/tmp/build/output-1 my-image my-task.sh", pathToDocker),
-		}))
+			fmt.Sprintf("%s run --workdir=/tmp/build --env=VAR1=var-1 --volume=(.*)/local-1:/tmp/build/input-1 --volume=/tmp/local-2:/tmp/build/output-1 my-image my-task.sh", pathToDocker),
+		))
 	})
 
 	It("runs a concourse task with complex inputs", func() {

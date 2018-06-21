@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/ryanmoran/piper"
+	"github.com/joshzarrabi/piper"
 )
 
 func main() {
@@ -53,10 +53,12 @@ func main() {
 	resources = append(resources, taskConfig.Inputs...)
 	resources = append(resources, taskConfig.Outputs...)
 
-	volumeMounts, err := piper.VolumeMountBuilder{}.Build(resources, inputPairs, outputPairs)
+	volumeMounts, localMountPoint, err := piper.VolumeMountBuilder{}.Build(resources, inputPairs, outputPairs)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	defer os.RemoveAll(localMountPoint)
 
 	envVars := piper.EnvVarBuilder{}.Build(os.Environ(), taskConfig.Params)
 
